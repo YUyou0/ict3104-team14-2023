@@ -57,7 +57,7 @@ class CharadesDataset(Dataset):
         #--------New code -------------------------------------#
     
         # Set metadata path
-        self.meta_path = 'Data/CharadesVideos2/metaData.json'
+        self.meta_path = 'training-data/training-data.json'
         # Set video directory
         self.data_dir = video_path
 
@@ -170,7 +170,7 @@ class CharadesDataset(Dataset):
     # Modify the _get_video_path function (Remove the part_id and clip_id ---> video_id)
     def _get_video_path(self, sample):
         video_id = sample[0]
-        video_path = os.path.join('input-videos', 'charades', video_id + '.mp4')
+        video_path = os.path.join('input_videos', 'charades', video_id + '.mp4')
         return video_path
     
     #--------------------------------------------------------------------------------------#
