@@ -171,6 +171,10 @@ class CharadesDataset(Dataset):
     def _get_video_path(self, sample):
         video_id = sample[0]
         video_path = os.path.join('input_videos', 'charades', video_id + '.mp4')
+
+
+
+
         return video_path
     
     #--------------------------------------------------------------------------------------#
