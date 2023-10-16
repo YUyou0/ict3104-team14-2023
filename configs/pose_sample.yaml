@@ -5,7 +5,12 @@ output_dir: "output"
 validation_data:
   prompts:
     - "Iron man on the beach"
-    
+ 
+
+
+
+
+ 
     
     
   video_length: 8
