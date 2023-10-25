@@ -29,8 +29,19 @@ from followyourpose.pipelines.pipeline_followyourpose import FollowYourPosePipel
 from followyourpose.util import save_videos_grid, ddim_inversion
 from einops import rearrange
 
+
+
 import sys
 sys.path.append('FollowYourPose')
+
+from datetime import datetime
+import pytz
+# Set the timezone to Singapore Standard Time (SGT)
+sgt_timezone = pytz.timezone('Asia/Singapore')
+# Get the current date and time in SGT
+current_datetime_sgt = datetime.now(sgt_timezone)
+# Format the datetime to exclude seconds
+formatted_datetime_sgt = current_datetime_sgt.strftime("%Y-%m-%d %H:%M")
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.10.0.dev0")
@@ -161,17 +172,17 @@ def main(
         ddim_inv_latent = None
 
         from datetime import datetime
-   
+
         now = str(datetime.now())
         # print(now)
         for idx, prompt in enumerate(validation_data.prompts):
             sample = validation_pipeline(prompt, generator=generator, latents=ddim_inv_latent,
                                         skeleton_path=skeleton_path,
                                         **validation_data).videos
-            save_videos_grid(sample, f"{output_dir}/inference/sample-{global_step}-{str(seed)}-{now}/{prompt}.gif")
+            save_videos_grid(sample, f"{output_dir}/inference/{formatted_datetime_sgt}/{prompt}.gif")
             samples.append(sample)
         samples = torch.concat(samples)
-        save_path = f"{output_dir}/inference/sample-{global_step}-{str(seed)}-{now}.gif"
+        save_path = f"{output_dir}/inference/{formatted_datetime_sgt}.gif"
         save_videos_grid(samples, save_path)
         logger.info(f"Saved samples to {save_path}")
 
