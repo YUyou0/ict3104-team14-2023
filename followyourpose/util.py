@@ -10,7 +10,7 @@ from tqdm import tqdm
 from einops import rearrange
 
 
-def save_videos_grid(videos: torch.Tensor, path: str, rescale=False, n_rows=4, fps=8):
+def save_videos_grid(videos: torch.Tensor, path: str, rescale=False, n_rows=5, fps=8):
     videos = rearrange(videos, "b c t h w -> t b c h w")
     outputs = []
     for x in videos:
@@ -29,10 +29,14 @@ def save_videos_grid(videos: torch.Tensor, path: str, rescale=False, n_rows=4, f
 @torch.no_grad()
 def init_prompt(prompt, pipeline):
     uncond_input = pipeline.tokenizer(
-        [""], padding="max_length", max_length=pipeline.tokenizer.model_max_length,
-        return_tensors="pt"
+        [""],
+        padding="max_length",
+        max_length=pipeline.tokenizer.model_max_length,
+        return_tensors="pt",
     )
-    uncond_embeddings = pipeline.text_encoder(uncond_input.input_ids.to(pipeline.device))[0]
+    uncond_embeddings = pipeline.text_encoder(
+        uncond_input.input_ids.to(pipeline.device)
+    )[0]
     text_input = pipeline.tokenizer(
         [prompt],
         padding="max_length",
@@ -46,16 +50,35 @@ def init_prompt(prompt, pipeline):
     return context
 
 
-def next_step(model_output: Union[torch.FloatTensor, np.ndarray], timestep: int,
-              sample: Union[torch.FloatTensor, np.ndarray], ddim_scheduler):
-    timestep, next_timestep = min(
-        timestep - ddim_scheduler.config.num_train_timesteps // ddim_scheduler.num_inference_steps, 999), timestep
-    alpha_prod_t = ddim_scheduler.alphas_cumprod[timestep] if timestep >= 0 else ddim_scheduler.final_alpha_cumprod
+def next_step(
+    model_output: Union[torch.FloatTensor, np.ndarray],
+    timestep: int,
+    sample: Union[torch.FloatTensor, np.ndarray],
+    ddim_scheduler,
+):
+    timestep, next_timestep = (
+        min(
+            timestep
+            - ddim_scheduler.config.num_train_timesteps
+            // ddim_scheduler.num_inference_steps,
+            999,
+        ),
+        timestep,
+    )
+    alpha_prod_t = (
+        ddim_scheduler.alphas_cumprod[timestep]
+        if timestep >= 0
+        else ddim_scheduler.final_alpha_cumprod
+    )
     alpha_prod_t_next = ddim_scheduler.alphas_cumprod[next_timestep]
     beta_prod_t = 1 - alpha_prod_t
-    next_original_sample = (sample - beta_prod_t ** 0.5 * model_output) / alpha_prod_t ** 0.5
+    next_original_sample = (
+        sample - beta_prod_t**0.5 * model_output
+    ) / alpha_prod_t**0.5
     next_sample_direction = (1 - alpha_prod_t_next) ** 0.5 * model_output
-    next_sample = alpha_prod_t_next ** 0.5 * next_original_sample + next_sample_direction
+    next_sample = (
+        alpha_prod_t_next**0.5 * next_original_sample + next_sample_direction
+    )
     return next_sample
 
 
@@ -80,5 +103,7 @@ def ddim_loop(pipeline, ddim_scheduler, latent, num_inv_steps, prompt):
 
 @torch.no_grad()
 def ddim_inversion(pipeline, ddim_scheduler, video_latent, num_inv_steps, prompt=""):
-    ddim_latents = ddim_loop(pipeline, ddim_scheduler, video_latent, num_inv_steps, prompt)
+    ddim_latents = ddim_loop(
+        pipeline, ddim_scheduler, video_latent, num_inv_steps, prompt
+    )
     return ddim_latents

@@ -30,14 +30,15 @@ from followyourpose.util import save_videos_grid, ddim_inversion
 from einops import rearrange
 
 
-
 import sys
-sys.path.append('FollowYourPose')
+
+sys.path.append("FollowYourPose")
 
 from datetime import datetime
 import pytz
+
 # Set the timezone to Singapore Standard Time (SGT)
-sgt_timezone = pytz.timezone('Asia/Singapore')
+sgt_timezone = pytz.timezone("Asia/Singapore")
 # Get the current date and time in SGT
 current_datetime_sgt = datetime.now(sgt_timezone)
 # Format the datetime to exclude seconds
@@ -95,14 +96,22 @@ def main(
         os.makedirs(output_dir, exist_ok=True)
         os.makedirs(f"{output_dir}/samples", exist_ok=True)
         os.makedirs(f"{output_dir}/inv_latents", exist_ok=True)
-        OmegaConf.save(config, os.path.join(output_dir, 'config.yaml'))
+        OmegaConf.save(config, os.path.join(output_dir, "config.yaml"))
 
     # Load scheduler, tokenizer and models.
-    noise_scheduler = DDPMScheduler.from_pretrained(pretrained_model_path, subfolder="scheduler")
-    tokenizer = CLIPTokenizer.from_pretrained(pretrained_model_path, subfolder="tokenizer")
-    text_encoder = CLIPTextModel.from_pretrained(pretrained_model_path, subfolder="text_encoder")
+    noise_scheduler = DDPMScheduler.from_pretrained(
+        pretrained_model_path, subfolder="scheduler"
+    )
+    tokenizer = CLIPTokenizer.from_pretrained(
+        pretrained_model_path, subfolder="tokenizer"
+    )
+    text_encoder = CLIPTextModel.from_pretrained(
+        pretrained_model_path, subfolder="text_encoder"
+    )
     vae = AutoencoderKL.from_pretrained(pretrained_model_path, subfolder="vae")
-    unet = UNet3DConditionModel.from_pretrained_2d(pretrained_model_path, subfolder="unet")
+    unet = UNet3DConditionModel.from_pretrained_2d(
+        pretrained_model_path, subfolder="unet"
+    )
 
     # Freeze vae and text_encoder
     vae.requires_grad_(False)
@@ -114,19 +123,27 @@ def main(
         if is_xformers_available():
             unet.enable_xformers_memory_efficient_attention()
         else:
-            raise ValueError("xformers is not available. Make sure it is installed correctly")
+            raise ValueError(
+                "xformers is not available. Make sure it is installed correctly"
+            )
 
     if gradient_checkpointing:
         unet.enable_gradient_checkpointing()
 
-
     # Get the validation pipeline
     validation_pipeline = FollowYourPosePipeline(
-        vae=vae, text_encoder=text_encoder, tokenizer=tokenizer, unet=unet,
-        scheduler=DDIMScheduler.from_pretrained(pretrained_model_path, subfolder="scheduler")
+        vae=vae,
+        text_encoder=text_encoder,
+        tokenizer=tokenizer,
+        unet=unet,
+        scheduler=DDIMScheduler.from_pretrained(
+            pretrained_model_path, subfolder="scheduler"
+        ),
     )
     validation_pipeline.enable_vae_slicing()
-    ddim_inv_scheduler = DDIMScheduler.from_pretrained(pretrained_model_path, subfolder='scheduler')
+    ddim_inv_scheduler = DDIMScheduler.from_pretrained(
+        pretrained_model_path, subfolder="scheduler"
+    )
     ddim_inv_scheduler.set_timesteps(validation_data.num_inv_steps)
 
     unet = accelerator.prepare(unet)
@@ -163,7 +180,6 @@ def main(
 
         global_step = int(load_path.split("-")[-1])
 
-                
     if accelerator.is_main_process:
         samples = []
         generator = torch.Generator(device=accelerator.device)
@@ -176,10 +192,17 @@ def main(
         now = str(datetime.now())
         # print(now)
         for idx, prompt in enumerate(validation_data.prompts):
-            sample = validation_pipeline(prompt, generator=generator, latents=ddim_inv_latent,
-                                        skeleton_path=skeleton_path,
-                                        **validation_data).videos
-            save_videos_grid(sample, f"{output_dir}/inference/{formatted_datetime_sgt}/{prompt}.gif")
+            sample = validation_pipeline(
+                prompt,
+                generator=generator,
+                latents=ddim_inv_latent,
+                skeleton_path=skeleton_path,
+                **validation_data,
+            ).videos
+            save_videos_grid(
+                sample,
+                f"{output_dir}/inference/{formatted_datetime_sgt}/{prompt}_{idx + 1}.gif",
+            )
             samples.append(sample)
         samples = torch.concat(samples)
         save_path = f"{output_dir}/inference/{formatted_datetime_sgt}.gif"
@@ -187,10 +210,9 @@ def main(
         logger.info(f"Saved samples to {save_path}")
 
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str)
     parser.add_argument("--skeleton_path", type=str)
     args = parser.parse_args()
-    main(**OmegaConf.load(args.config), skeleton_path = args.skeleton_path)
+    main(**OmegaConf.load(args.config), skeleton_path=args.skeleton_path)
